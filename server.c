@@ -46,11 +46,25 @@ int main()
 	
 	char buff[1024];
 	int result_response;
-	//формирвоание выдачи
-	char serv_response [65536] = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 100\r\n\r\n\<html>\n<head>\n<title>321</title>\n</head>\n<body>123<a href = \"server.c\">server</a></body>\n</html>";//= malloc(63 + length_num + 100);
+	
+	//узнаем размер файла
+	FILE *fp = fopen("1.jpg","rb");
+	fseek(fp,0L,SEEK_END);
+	int fileSize = ftell(fp);
+	fseek(fp,0L,SEEK_SET);
+	unsigned char fileBuff[4096];
+	int checkFileWrite = 0;
+	
+	char chrFileSize [21];
+	sprintf(chrFileSize,"%d",fileSize);
+	
+	//формируем ответ
+	char serv_response [1000] = "HTTP/1.1 200 OK\r\nAccept-Ranges: bytes\r\nContent-Type: image/jpg\r\nContent-Length: ";//\r\n<html>\n<head>\n<title>321</title>\n</head>\n<body>123<a href = \"server.c\">server</a></body>\n</html>";//= malloc(63 + length_num + 100);
+	strcat(serv_response,chrFileSize);
+	strcat(serv_response,"\r\n\r\n");
 	
 	while(1)
-	{
+	{	
 		addr_size = sizeof(their_addr);
 		sock_client = accept(sock_serv,(struct sockaddr *)&their_addr,&addr_size);
 		
@@ -60,7 +74,27 @@ int main()
 		else if (result_response > 0)
 		{
 			buff[result_response] = '\0';
-			send(sock_client,serv_response,65536,0);
+			printf("%s\n",buff);
+			if(strstr(buff,"GET"))
+			{
+				//2745
+				send(sock_client,serv_response,strlen(serv_response),0);
+
+				for (int i = fileSize;i>=0; i-=4096 )
+				{
+					if(fileSize<4096)
+					{
+						fread(fileBuff,1,i,fp);
+						send(sock_client,fileBuff,i,0);
+					}
+					else
+					{
+						fread(fileBuff,1,4096,fp);
+						send(sock_client,fileBuff,4096,0);
+					}
+				}
+				fseek(fp,0L,SEEK_SET);
+			}
 		}
 		close(sock_client);
 	}
