@@ -1,17 +1,16 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <errno.h>
 
-int main()
+#include "server.h"
+
+const int MAX_SIZE_BUFF = 8192;
+
+int main(int argc, char **argv)
 {
+	if(argc != 2)
+	{
+		printf("2 arg\n");
+		return -1;
+	}
+	//установка соединения
 	struct addrinfo hints = {0}, *serverinfo,*res;
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
@@ -44,56 +43,48 @@ int main()
 	socklen_t addr_size;
 	int sock_client;
 	
-	char buff[1024];
+	char buffClientRequest[1024];
 	int result_response;
+
+	//Генерируем HtmlStartPage 
+	GenerationHtml();
 	
-	//узнаем размер файла
-	FILE *fp = fopen("1.jpg","rb");
-	fseek(fp,0L,SEEK_END);
-	int fileSize = ftell(fp);
-	fseek(fp,0L,SEEK_SET);
-	unsigned char fileBuff[4096];
-	int checkFileWrite = 0;
+
 	
-	char chrFileSize [21];
-	sprintf(chrFileSize,"%d",fileSize);
+	//формируем первый ответ
+	char serv_response [1000];
 	
-	//формируем ответ
-	char serv_response [1000] = "HTTP/1.1 200 OK\r\nAccept-Ranges: bytes\r\nContent-Type: image/jpg\r\nContent-Length: ";//\r\n<html>\n<head>\n<title>321</title>\n</head>\n<body>123<a href = \"server.c\">server</a></body>\n</html>";//= malloc(63 + length_num + 100);
-	strcat(serv_response,chrFileSize);
-	strcat(serv_response,"\r\n\r\n");
+	unsigned char fileBuff[MAX_SIZE_BUFF];
 	
+		
 	while(1)
 	{	
 		addr_size = sizeof(their_addr);
 		sock_client = accept(sock_serv,(struct sockaddr *)&their_addr,&addr_size);
 		
-		result_response = recv(sock_client,buff,1024,0);
+		result_response = recv(sock_client,buffClientRequest,1024,0);
 		if(result_response == SO_ERROR)
 			printf("recv fail");
 		else if (result_response > 0)
 		{
-			buff[result_response] = '\0';
-			printf("%s\n",buff);
-			if(strstr(buff,"GET"))
+			buffClientRequest[result_response] = '\0';
+			if(ParseHtml(buffClientRequest,serv_response,argv[1]) == 1)
 			{
-				//2745
 				send(sock_client,serv_response,strlen(serv_response),0);
 
-				for (int i = fileSize;i>=0; i-=4096 )
+				for (int i = fileSize;i>=0; i-=MAX_SIZE_BUFF )
 				{
-					if(fileSize<4096)
+					if(fileSize<MAX_SIZE_BUFF)
 					{
 						fread(fileBuff,1,i,fp);
 						send(sock_client,fileBuff,i,0);
 					}
 					else
 					{
-						fread(fileBuff,1,4096,fp);
-						send(sock_client,fileBuff,4096,0);
+						fread(fileBuff,1,MAX_SIZE_BUFF,fp);
+						send(sock_client,fileBuff,MAX_SIZE_BUFF,0);
 					}
 				}
-				fseek(fp,0L,SEEK_SET);
 			}
 		}
 		close(sock_client);
