@@ -43,33 +43,27 @@ int ParseHtml(char *buffClientRequest, char* serv_response,const char *dirInput)
 			de = readdir(dir);
 			if (!de) 
 				break;
-			//скрытые папки нам не нужны
+			//скрытые файлы и папки нам не нужны
 			if(de->d_name[0] != '.' && de->d_type == 8)
 			{
 				strcat(chch,de->d_name);
+				//если это обычный ГЕТ запрос, то отправляем стартовую страницу
 				if(strstr(buffClientRequest,"GET / HTTP/1.1"))
 				{
 					fp = fopen("HtmlStartPage.html","rb");
-					fseek(fp,0L,SEEK_END);
-					fileSize = ftell(fp);
-					fseek(fp,0L,SEEK_SET);
-					int checkFileWrite = 0;
 					char chrFileSize [21];
-					sprintf(chrFileSize,"%ld",fileSize);
+					GetFileSize(fp,chrFileSize);
 					strcpy(serv_response,"HTTP/1.1 200 OK\r\nAccept-Ranges: bytes\r\nContent-Type: text/html\r\nContent-Length: ");
 					strcat(serv_response,chrFileSize);
 					strcat(serv_response,"\r\n\r\n\0");
 					break;
 				}
+				//если в запросе есть есть имя файла из папки, то отправялем его 
 				if(strstr(buffClientRequest,de->d_name))
 				{
 					fp = fopen(chch,"rb");
-					fseek(fp,0L,SEEK_END);
-					fileSize = ftell(fp);
-					fseek(fp,0L,SEEK_SET);
-					int checkFileWrite = 0;
 					char chrFileSize [21];
-					sprintf(chrFileSize,"%ld",fileSize);
+					GetFileSize(fp,chrFileSize);
 					strcpy(serv_response,"HTTP/1.1 200 OK\r\nAccept-Ranges: bytes\r\nContent-Type: text/plain\r\nContent-Length: ");
 					strcat(serv_response,chrFileSize);
 					strcat(serv_response,"\r\n\r\n\0");
@@ -80,4 +74,12 @@ int ParseHtml(char *buffClientRequest, char* serv_response,const char *dirInput)
 	}
 	else
 		return 0;
+}
+
+void GetFileSize(FILE *fp, char *chrFileSize)
+{
+	fseek(fp,0L,SEEK_END);
+	fileSize = ftell(fp);
+	fseek(fp,0L,SEEK_SET);
+	sprintf(chrFileSize,"%ld",fileSize);
 }

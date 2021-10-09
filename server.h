@@ -23,6 +23,11 @@ int totalFileInDir;
 FILE *fp;
 long int fileSize;
 
+//функа генерации html
 void GenerationHtml();
-void SendStartHtml(char *serv_response);
+
+//функа парсинга запроса и генерации ответа
 int ParseHtml(char *buffClientRequest,char *serv_response,const char *dirInput);
+
+//функа для вычисления размера файла 
+void GetFileSize(FILE *fp, char *chrFileSize);

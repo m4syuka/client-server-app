@@ -5,10 +5,19 @@ const int MAX_SIZE_BUFF = 8192;
 
 int main(int argc, char **argv)
 {
-	if(argc != 2)
+	//парсинг аргументов 
+	if(argc < 2)
 	{
-		printf("2 arg\n");
-		return -1;
+		printf("usage: ./*ur app* *keys* *file or dir*\n	for more information use --help\n");
+		return 0;
+	}
+	else if(strstr(argv[1],"--help") || strstr(argv[1],"-h"))
+	{
+		printf("keys:\n");
+		printf("	-dd share dir\n");
+		printf("	-df share file\n");
+		printf("	-u  download on PC\n");
+		return 0;
 	}
 	//установка соединения
 	struct addrinfo hints = {0}, *serverinfo,*res;
@@ -43,20 +52,19 @@ int main(int argc, char **argv)
 	socklen_t addr_size;
 	int sock_client;
 	
+	//буффера для запроса от клиента
 	char buffClientRequest[1024];
 	int result_response;
 
 	//Генерируем HtmlStartPage 
 	GenerationHtml();
 	
-
-	
-	//формируем первый ответ
+	//буффер для заголовка html ответа 
 	char serv_response [1000];
 	
+	//буффер для отправки файла
 	unsigned char fileBuff[MAX_SIZE_BUFF];
 	
-		
 	while(1)
 	{	
 		addr_size = sizeof(their_addr);
@@ -68,10 +76,13 @@ int main(int argc, char **argv)
 		else if (result_response > 0)
 		{
 			buffClientRequest[result_response] = '\0';
+			//отправялем запрос в функцию парсинга. 1 - ГЕТ запрос 0 - НЕ ГЕТ запрос
 			if(ParseHtml(buffClientRequest,serv_response,argv[1]) == 1)
 			{
+				//отправляем клиенту заголовок
 				send(sock_client,serv_response,strlen(serv_response),0);
 
+				//отправляем клиенту сам файл
 				for (int i = fileSize;i>=0; i-=MAX_SIZE_BUFF )
 				{
 					if(fileSize<MAX_SIZE_BUFF)
