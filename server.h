@@ -23,11 +23,15 @@ int totalFileInDir;
 FILE *fp;
 long int fileSize;
 
+//выбор файла или папки 
+//если это папка, то = 0, если файл = 1
+int selectDorF;
+
 //функа генерации html
-void GenerationHtml();
+void GenerationHtml(const char* dirInput);
 
 //функа парсинга запроса и генерации ответа
-int ParseHtml(char *buffClientRequest,char *serv_response,const char *dirInput);
+int ParseHtml(char *buffClientRequest,char *serv_response,const char *dirInput,const char* fileInput);
 
 //функа для вычисления размера файла 
 void GetFileSize(FILE *fp, char *chrFileSize);

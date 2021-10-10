@@ -1,4 +1,3 @@
-
 #include "server.h"
 
 const int MAX_SIZE_BUFF = 8192;
@@ -19,6 +18,10 @@ int main(int argc, char **argv)
 		printf("	-u  download on PC\n");
 		return 0;
 	}
+	else if (strstr(argv[1],"-dd"))
+		selectDorF = 0;
+	else if(strstr(argv[1],"-df"))
+		selectDorF = 1;
 	//установка соединения
 	struct addrinfo hints = {0}, *serverinfo,*res;
 	hints.ai_family = AF_UNSPEC;
@@ -56,14 +59,16 @@ int main(int argc, char **argv)
 	char buffClientRequest[1024];
 	int result_response;
 
+	if (!selectDorF)
 	//Генерируем HtmlStartPage 
-	GenerationHtml();
+		GenerationHtml(argv[2]);
 	
 	//буффер для заголовка html ответа 
 	char serv_response [1000];
 	
 	//буффер для отправки файла
 	unsigned char fileBuff[MAX_SIZE_BUFF];
+	
 	
 	while(1)
 	{	
@@ -77,7 +82,12 @@ int main(int argc, char **argv)
 		{
 			buffClientRequest[result_response] = '\0';
 			//отправялем запрос в функцию парсинга. 1 - ГЕТ запрос 0 - НЕ ГЕТ запрос
-			if(ParseHtml(buffClientRequest,serv_response,argv[1]) == 1)
+			int resulParseHtml;
+			if(selectDorF == 0)
+				resulParseHtml = ParseHtml(buffClientRequest,serv_response,argv[2],0);
+			else if (selectDorF == 1)
+				resulParseHtml = ParseHtml(buffClientRequest,serv_response,0,argv[2]);
+			if(resulParseHtml)
 			{
 				//отправляем клиенту заголовок
 				send(sock_client,serv_response,strlen(serv_response),0);
