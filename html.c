@@ -41,7 +41,7 @@ int ParseHtml(char *buffClientRequest, char* serv_response,const char *dirInput,
 	//Если это GET запрос
 	if(strstr(buffClientRequest,"GET"))
 	{
-		//Если это запрос на конкретный файл
+		//Если мы расшариваем папку
 		if (selectDorF == 0)
 		{
 			dir = opendir(dirInput);
@@ -85,6 +85,7 @@ int ParseHtml(char *buffClientRequest, char* serv_response,const char *dirInput,
 				}
 			}
 		}
+		//если мы шарим файл
 		else if(selectDorF == 1)
 		{
 			if (strstr(buffClientRequest,"GET / HTTP/1.1"))
@@ -98,6 +99,17 @@ int ParseHtml(char *buffClientRequest, char* serv_response,const char *dirInput,
 				strcat(serv_response,chrFileSize);
 				strcat(serv_response,"\r\n\r\n\0");
 			}
+		}
+		//если мы принимаем на скачку
+		else if (selectDorF == 2)
+		{
+			fp = fopen("post.html","rb");
+			char chrFileSize [21];
+			GetFileSize(fp,chrFileSize);
+			strcpy(serv_response,"HTTP/1.1 200 OK\r\nAccept-Ranges: bytes\r\nContent-Type: text/html\r\nConnection: Keep-Alive\r\n");
+			strcat(serv_response,"\"\r\nContent-Length: ");
+			strcat(serv_response,chrFileSize);
+			strcat(serv_response,"\r\n\r\n\0");
 		}
 		return 1;
 	}

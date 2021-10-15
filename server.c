@@ -22,6 +22,10 @@ int main(int argc, char **argv)
 		selectDorF = 0;
 	else if(strstr(argv[1],"-df"))
 		selectDorF = 1;
+	else if(strstr(argv[1],"-u"))
+		selectDorF = 2;
+	
+	printf("%s",argv[1]);
 	//установка соединения
 	struct addrinfo hints = {0}, *serverinfo,*res;
 	hints.ai_family = AF_UNSPEC;
@@ -66,8 +70,6 @@ int main(int argc, char **argv)
 	//буффер для заголовка html ответа 
 	char serv_response [1000];
 	
-	//буффер для отправки файла
-	unsigned char fileBuff[MAX_SIZE_BUFF];
 	
 	
 	while(1)
@@ -84,33 +86,49 @@ int main(int argc, char **argv)
 			//отправялем запрос в функцию парсинга. 1 - ГЕТ запрос 0 - НЕ ГЕТ запрос
 			int resulParseHtml;
 			if(selectDorF == 0)
-				resulParseHtml = ParseHtml(buffClientRequest,serv_response,argv[2],0);
-			else if (selectDorF == 1)
-				resulParseHtml = ParseHtml(buffClientRequest,serv_response,0,argv[2]);
-			if(resulParseHtml)
 			{
-				//отправляем клиенту заголовок
-				send(sock_client,serv_response,strlen(serv_response),0);
-
-				//отправляем клиенту сам файл
-				for (int i = fileSize;i>=0; i-=MAX_SIZE_BUFF )
-				{
-					if(fileSize<MAX_SIZE_BUFF)
-					{
-						fread(fileBuff,1,i,fp);
-						send(sock_client,fileBuff,i,0);
-					}
-					else
-					{
-						fread(fileBuff,1,MAX_SIZE_BUFF,fp);
-						send(sock_client,fileBuff,MAX_SIZE_BUFF,0);
-					}
-				}
+				if(ParseHtml(buffClientRequest,serv_response,argv[2],0))
+					SendData(sock_client,serv_response);
 			}
+			else if (selectDorF == 1)
+			{
+				if(ParseHtml(buffClientRequest,serv_response,0,argv[2]))
+				SendData(sock_client,serv_response);
+			}
+			else if (selectDorF == 2)
+			{
+				if(ParseHtml(buffClientRequest,serv_response,0,0))
+				SendData(sock_client,serv_response);
+			}
+
 		}
 		close(sock_client);
 	}
 	close(sock_serv);
 
 	return 0;
+}
+
+void SendData(int sock_client,const char *serv_response)
+{
+	//отправляем клиенту заголовок
+	send(sock_client,serv_response,strlen(serv_response),0);
+
+	//буффер для отправки файла
+	unsigned char fileBuff[MAX_SIZE_BUFF];
+
+	//отправляем клиенту сам файл
+	for (int i = fileSize;i>=0; i-=MAX_SIZE_BUFF )
+	{
+		if(fileSize<MAX_SIZE_BUFF)
+		{
+			fread(fileBuff,1,i,fp);
+			send(sock_client,fileBuff,i,0);
+		}
+		else
+		{
+			fread(fileBuff,1,MAX_SIZE_BUFF,fp);
+			send(sock_client,fileBuff,MAX_SIZE_BUFF,0);
+		}
+	}
 }

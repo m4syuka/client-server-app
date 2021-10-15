@@ -24,7 +24,7 @@ FILE *fp;
 long int fileSize;
 
 //выбор файла или папки 
-//если это папка, то = 0, если файл = 1
+//если это папка, то = 0, если файл = 1, аплоад на сервер = 2 
 int selectDorF;
 
 //функа генерации html
@@ -35,3 +35,6 @@ int ParseHtml(char *buffClientRequest,char *serv_response,const char *dirInput,c
 
 //функа для вычисления размера файла 
 void GetFileSize(FILE *fp, char *chrFileSize);
+
+//функа отправки данных 
+void SendData(int sock_client,const char *serv_response);
