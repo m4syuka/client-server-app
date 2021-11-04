@@ -100,7 +100,7 @@ int ParseHtml(char *buffClientRequest, char* serv_response,const char *dirInput,
 				strcat(serv_response,"\r\n\r\n\0");
 			}
 		}
-		//если мы принимаем на скачку
+		//если мы принимаем на скачивание 
 		else if (selectDorF == 2)
 		{
 			fp = fopen("post.html","rb");
