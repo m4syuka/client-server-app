@@ -10,6 +10,8 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <ifaddrs.h>
+#include <fcntl.h>
 
 //другое 
 extern const int MAX_SIZE_BUFF;

@@ -1,6 +1,6 @@
 #include "server.h"
 
-const int MAX_SIZE_BUFF = 32768;
+const int MAX_SIZE_BUFF = 65536;
 
 int main(int argc, char **argv)
 {
@@ -10,7 +10,7 @@ int main(int argc, char **argv)
 		printf("usage: ./*ur app* *keys* *file or dir*\n	for more information use -pomogite\n");
 		return 0;
 	}
-	else if(!strcmp(argv[1],"-pomogite"))
+	else if(!strcmp(argv[1],"-pomogite") || !strcmp(argv[1],"-h"))
 	{
 		printf("keys:\n");
 		printf("	-dd share dir\n");
@@ -24,6 +24,28 @@ int main(int argc, char **argv)
 		selectDorF = 1;
 	else if(!strcmp(argv[1],"-u"))
 		selectDorF = 2;
+	
+	//Вывод ИП адресов и интерфейсов
+	struct ifaddrs * ifAddrStruct = NULL, * ifa = NULL;
+    void * tmpAddrPtr = NULL;
+
+    getifaddrs(&ifAddrStruct);
+    for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next) {
+        if (ifa ->ifa_addr->sa_family == AF_INET) { 
+            char mask[INET_ADDRSTRLEN];
+            void* mask_ptr = &((struct sockaddr_in*) ifa->ifa_netmask)->sin_addr;
+            inet_ntop(AF_INET, mask_ptr, mask, INET_ADDRSTRLEN);
+            if (strcmp(mask, "255.0.0.0") != 0) {
+                printf("mask:%s\n", mask);
+                tmpAddrPtr = &((struct sockaddr_in *) ifa->ifa_addr)->sin_addr;
+                char addressBuffer[INET_ADDRSTRLEN];
+                inet_ntop(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
+                printf("%s IP Address %s\n", ifa->ifa_name, addressBuffer);
+            }
+        }
+    }
+    if (ifAddrStruct != NULL)
+        freeifaddrs(ifAddrStruct);
 	
 	//установка соединения
 	struct addrinfo hints = {0}, *serverinfo,*res;
@@ -59,6 +81,9 @@ int main(int argc, char **argv)
 	int sock_client;
 
 	char serv_response [1024];
+	struct timeval tv;
+	fd_set readfds;
+	FD_ZERO(&readfds);
 	//Если мы выбрали загрузку на сервер
 	if (selectDorF == 2)
 	{
@@ -66,56 +91,66 @@ int main(int argc, char **argv)
 		{
 		addr_size = sizeof(their_addr);
 		sock_client = accept(sock_serv,(struct sockaddr *)&their_addr,&addr_size);
+		if(sock_client == -1)
+		{
+			perror("accept");
+			continue;
+		}
+		FD_SET(sock_client, &readfds);
+		tv.tv_sec = 0;
+		tv.tv_usec = 500000;
+		int rv = select(sock_client + 1, &readfds, NULL, NULL, &tv);
+		if(rv == -1)
+			perror("select");
 		
 		unsigned char postDataBuff[MAX_SIZE_BUFF];
 		int postDataPacketSize = 0;
-		//получаем запрос
-		postDataPacketSize= recv(sock_client,postDataBuff,MAX_SIZE_BUFF,0);
-		//если это GET, отправляем страничку с POST методом
-		if(ParseHtml(postDataBuff,serv_response,0,0))
-			SendData(sock_client,serv_response);
-		//если это POST
-		else if (strstr(postDataBuff,"POST"))
+		// добавить комментарий
+		if(rv > 0)
 		{
-			//***Начинаем пасрить заголовок POST запрос***
-			
-			//найдем размер файла (content-length) только зачем...?
-			unsigned char *pos1, *pos2;
-			pos1 = strstr(postDataBuff,"Content-Length: ") + 16;	
-			long int postFileSize = strtol(pos1,NULL,10);
-		
-			//название файла
-			pos1 = strstr(postDataBuff,"filename=\"") + 10;
-			pos2 = strstr(postDataBuff,"\"\r\nContent-Type");
-			char postFileName [512];
-			strncpy(postFileName,pos1,pos2-pos1);
-			
-			//удаляем POST заголовок и записываем в файл
-			fp = fopen(postFileName,"wb");
-			pos1 = strstr(pos2,"\r\n\r\n") + 4;
-			fwrite(pos1,1,postDataPacketSize - (pos1-postDataBuff),fp);
-			
-			//если размер пакета == размеру буфера, вероятнее всего, будут еще пакеты
-			if(postDataPacketSize == MAX_SIZE_BUFF)
+			postDataPacketSize = recv(sock_client,postDataBuff,MAX_SIZE_BUFF,0);
+			//если это GET, отправляем страничку с POST методом
+			if(ParseHtml(postDataBuff,serv_response,0,0))
+				SendData(sock_client,serv_response);
+			//если это POST
+			else if (strstr(postDataBuff,"POST"))
 			{
-				//последний пакет, вероятнее всего, будет < MAX_SIZE_BUFF
-				while((postDataPacketSize= recv(sock_client,postDataBuff,MAX_SIZE_BUFF,0)) > 0)
-				{
-					//если так и есть
-					if (postDataPacketSize < MAX_SIZE_BUFF)
-					{
-						//пишем в файл последний пакет - 64 символа(это blob)
-						fwrite(postDataBuff,1,postDataPacketSize-64,fp);
-						break;
-					}
-					fwrite(postDataBuff,1,postDataPacketSize,fp);
-				}
-			}
-			fclose(fp);
+				//***Начинаем парсить заголовок POST запрос***
 				
-		}	
+				//найдем размер файла (content-length) только зачем...?
+				unsigned char *pos1, *pos2;
+				pos1 = strstr(postDataBuff,"Content-Length: ") + 16;	
+				long int postFileSize = strtol(pos1,NULL,10);
+				
+				//ищем boundary  только зачем...?
+				pos1 = strstr(postDataBuff,"-----");
+				pos2 = strstr(pos1,"\r\nContent-Length");
+				char postBoundarylast [64] = "--";
+				strncpy(postBoundarylast+2,pos1,pos2-pos1);
+				strcat(postBoundarylast,"--");
+			
+				//название файла
+				pos1 = strstr(postDataBuff,"filename=\"") + 10;
+				pos2 = strstr(postDataBuff,"\"\r\nContent-Type");
+				char postFileName [256] = {0};
+				strncpy(postFileName,pos1,pos2-pos1);
+				
+				//удаляем POST заголовок и записываем в файл
+				fp = fopen(postFileName,"wb");
+				pos1 = strstr(pos2,"\r\n\r\n") + 4;
+				fwrite(pos1,1,postDataPacketSize - (pos1-postDataBuff),fp);
+				while(select(sock_client + 1, &readfds, NULL, NULL, &tv) != 0)
+				{
+					postDataPacketSize = recv(sock_client,postDataBuff,MAX_SIZE_BUFF,0);
+					fwrite(postDataBuff,1,postDataPacketSize,fp);
+					tv.tv_sec = 0;
+					tv.tv_usec = 500000;
+				}
+				fclose(fp);
+				send(sock_client,"HTTP/1.1 200 OK\r\nAccept-Ranges: bytes\r\nContent-Type: text/html\r\nContent-Length: 15\r\n\r\n\0<html>OK</html>",113,0);
+			}	
 		close(sock_client);
-		}
+		}}
 	}
 	else
 	{
