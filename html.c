@@ -103,7 +103,9 @@ int ParseHtml(char *buffClientRequest, char* serv_response,const char *dirInput,
 		//если мы принимаем на скачивание 
 		else if (selectDorF == 2)
 		{
-			fp = fopen("post.html","rb");
+			extern char addressBuffer[INET_ADDRSTRLEN];
+			fp = fopen("post.html","w+");
+			fprintf(fp,"<html>\r\n<form enctype=""multipart/form-data"" action=""http://%s/upload method=""POST"">Choose a file to upload: <input name=""uploadedfile"" type=""file"" /><br /><input type=""submit"" value=""Upload File"" /></form></html>""",addressBuffer);
 			char chrFileSize [21];
 			GetFileSize(fp,chrFileSize);
 			strcpy(serv_response,"HTTP/1.1 200 OK\r\nAccept-Ranges: bytes\r\nContent-Type: text/html\r\nConnection: Keep-Alive\r\n");

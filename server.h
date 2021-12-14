@@ -15,6 +15,7 @@
 
 //другое 
 extern const int MAX_SIZE_BUFF;
+extern char addressBuffer[INET_ADDRSTRLEN];
 
 //для открытия папки
 DIR *dir;

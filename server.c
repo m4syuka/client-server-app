@@ -1,6 +1,7 @@
 #include "server.h"
 
 const int MAX_SIZE_BUFF = 65536;
+char addressBuffer[INET_ADDRSTRLEN];
 
 int main(int argc, char **argv)
 {
@@ -24,26 +25,39 @@ int main(int argc, char **argv)
 		selectDorF = 1;
 	else if(!strcmp(argv[1],"-u"))
 		selectDorF = 2;
+	else
+	{
+		printf("Check keys!\n");
+		return 0;
+	}
 	
 	//Вывод ИП адресов и интерфейсов
 	struct ifaddrs * ifAddrStruct = NULL, * ifa = NULL;
     void * tmpAddrPtr = NULL;
 
+	printf("Select IP address:\n");
+	int selectedIPAddress = 0;
     getifaddrs(&ifAddrStruct);
     for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next) {
         if (ifa ->ifa_addr->sa_family == AF_INET) { 
-            char mask[INET_ADDRSTRLEN];
-            void* mask_ptr = &((struct sockaddr_in*) ifa->ifa_netmask)->sin_addr;
-            inet_ntop(AF_INET, mask_ptr, mask, INET_ADDRSTRLEN);
-            if (strcmp(mask, "255.0.0.0") != 0) {
-                printf("mask:%s\n", mask);
-                tmpAddrPtr = &((struct sockaddr_in *) ifa->ifa_addr)->sin_addr;
-                char addressBuffer[INET_ADDRSTRLEN];
-                inet_ntop(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
-                printf("%s IP Address %s\n", ifa->ifa_name, addressBuffer);
-            }
+            tmpAddrPtr = &((struct sockaddr_in *) ifa->ifa_addr)->sin_addr;
+            inet_ntop(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
+            printf("%d = %s IP Address %s\n",selectedIPAddress++, ifa->ifa_name, addressBuffer);
         }
     }
+	//А если ввели число больше???
+	selectedIPAddress = 0;
+	scanf("%d",&selectedIPAddress);
+	int i;
+	for (i = 0, ifa = ifAddrStruct; ifa != NULL;ifa = ifa->ifa_next) {
+        if ((ifa ->ifa_addr->sa_family == AF_INET) && (i++ == selectedIPAddress)) { 
+            tmpAddrPtr = &((struct sockaddr_in *) ifa->ifa_addr)->sin_addr;
+            inet_ntop(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
+			printf("Select IP Address %s\n",addressBuffer);
+        }
+    }
+
+	
     if (ifAddrStruct != NULL)
         freeifaddrs(ifAddrStruct);
 	
